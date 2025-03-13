@@ -7,12 +7,12 @@ const Navbar = () => {
 
   return (
     <nav className="navbar">
-      <h1>My App</h1>
+      <h1>LiM</h1>
       <div>
         <Link to="/">Home</Link>
         {user ? (
           <>
-            <Link to="/dashboard">Dashboard</Link>
+            <Link to="/Profile">Profile</Link>
             <button onClick={logout}>Logout</button>
           </>
         ) : (
