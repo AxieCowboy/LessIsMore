@@ -6,23 +6,29 @@ const User = require("../models/User")
 const router = express.Router()
 const authMiddleware = require("../middleware/authMiddleware")
 
-
 router.post("/signup", async (req, res) => {
   try {
     const { username, email, password } = req.body
 
-
     const existingUser = await User.findOne({ email })
-    if (existingUser) return res.status(400).json({ message: "User already exists" })
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" })
+    }
 
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" })
+    }
+
+    
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    const user = new User({ username, email, password: hashedPassword })
-    await user.save()
+    const newUser = new User({ username, email, password: hashedPassword })
+    await newUser.save()
 
     res.status(201).json({ message: "User created successfully" })
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    console.error("Signup Error:", error)
+    res.status(500).json({ message: "Server error", error: error.message })
   }
 })
 
@@ -30,17 +36,26 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body
 
-    const user = await User.findOne({ email })
-    if (!user) return res.status(400).json({ message: "User not found" })
+    const user = await User.findOne({ email }).select("+password")
+    if (!user) {
+      console.error(`Login failed: User with email ${email} not found`)
+      return res.status(400).json({ message: "User not found" })
+    }
 
-    const isMatch = await bcrypt.compare(password, user.password)
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" })
+    console.log("Entered password:", password)
+    console.log("Stored password (hashed):", user.password)
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "100d" })
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+    console.log("Password match:", isPasswordValid)
 
-    res.json({ token, userId: user._id })
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Incorrect password" })
+    }
+
+    res.json({ message: "Login successful", user })
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    console.error("Server error during login:", error)
+    res.status(500).json({ message: "Server error", error: error.message })
   }
 })
 

@@ -3,8 +3,8 @@ import { createContext, useState, useEffect } from "react"
 export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
-  
   let storedUser = localStorage.getItem("user")
+  let storedToken = localStorage.getItem("token")
 
   if (storedUser === "undefined" || storedUser === null) {
     storedUser = null
@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const [user, setUser] = useState(storedUser)
+  const [token, setToken] = useState(storedToken)
 
   useEffect(() => {
     if (user) {
@@ -27,6 +28,14 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user])
 
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem("token", token)
+    } else {
+      localStorage.removeItem("token")
+    }
+  }, [token])
+
   const login = async (email, password) => {
     try {
       const response = await fetch("http://localhost:5000/api/auth/login", {
@@ -35,24 +44,30 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error("Login failed")
+        throw new Error(data.message || "Login failed")
       }
 
-      const data = await response.json()
       setUser(data.user)
+      setToken(data.token)
+      return true
     } catch (error) {
       console.error("Login Error:", error)
+      return false
     }
   }
 
   const logout = () => {
     setUser(null)
+    setToken(null)
     localStorage.removeItem("user")
+    localStorage.removeItem("token")
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

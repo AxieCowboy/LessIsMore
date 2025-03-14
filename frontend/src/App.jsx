@@ -10,18 +10,23 @@ import ProtectedRoute from "./components/ProtectedRoute"
 function App() {
   return (
     <AuthProvider>
-      <Navbar />
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/home" element={<Home />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/" element={<Login />} />
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Login />} />
+          
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/profile" element={<Profile />} />
+          </Route>
 
-        {/* Protected Routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/profile" element={<Profile />} />
-        </Route>
-      </Routes>
+          {/* Redirect all unmatched routes to login */}
+          <Route path="*" element={<Login />} />
+        </Routes>
+      </div>
     </AuthProvider>
   )
 }
