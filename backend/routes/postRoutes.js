@@ -1,25 +1,38 @@
-const express = require('express')
-const Post = require('../models/Post')
+const express = require("express")
+const Post = require("../models/Post")
+const User = require("../models/User")
 
 const router = express.Router()
 
 router.post("/", async (req, res) => {
-    try {
-      const newPost = new Post(req.body)
-      const savedPost = await newPost.save()
-      res.status(201).json(savedPost)
-    } catch (err) {
-      res.status(500).json(err)
+  try {
+    const { userId, content } = req.body
+
+    const user = await User.findById(userId)
+    if (!user) {
+      return res.status(404).json({ message: "User not found" })
     }
-  })
-  
-  router.get("/", async (req, res) => {
-    try {
-      const posts = await Post.find().populate("userId", "username")
-      res.json(posts)
-    } catch (err) {
-      res.status(500).json(err)
-    }
-  })
-  
-  module.exports = router
+
+    const newPost = new Post({
+      userId,
+      username: user.username,
+      content,
+    })
+
+    await newPost.save()
+    res.status(201).json(newPost)
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message })
+  }
+})
+
+router.get("/", async (req, res) => {
+  try {
+    const posts = await Post.find().sort({ createdAt: -1 })
+    res.json(posts)
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message })
+  }
+})
+
+module.exports = router

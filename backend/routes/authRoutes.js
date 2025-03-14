@@ -36,7 +36,7 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" })
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" })
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "100d" })
 
     res.json({ token, userId: user._id })
   } catch (error) {
@@ -46,7 +46,7 @@ router.post("/login", async (req, res) => {
 
 router.get("/user/:id", async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select("-password") // Exclude password
+    const user = await User.findById(req.params.id).select("-password") 
     if (!user) return res.status(404).json({ message: "User not found" })
     res.json(user)
   } catch (error) {
