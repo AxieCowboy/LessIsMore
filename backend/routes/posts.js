@@ -29,15 +29,25 @@ router.get('/', auth, async (req, res) => {
       .limit(limit)
       .populate('author', 'username profilePicture')
       .populate('comments.user', 'username profilePicture')
+      .populate('likes', 'username profilePicture')
+      .lean()
+
+    const transformedPosts = posts.map(post => ({
+      ...post,
+      likes: post.likes || [],
+      comments: post.comments || [],
+      author: post.author || { username: 'Unknown User' }
+    }))
 
     const total = await Post.countDocuments()
 
     res.json({
-      posts,
+      posts: transformedPosts,
       totalPages: Math.ceil(total / limit),
       currentPage: page
     })
   } catch (error) {
+    console.error('Error fetching posts:', error)
     res.status(500).json({ message: 'Error fetching posts', error: error.message })
   }
 })
@@ -62,7 +72,10 @@ router.post('/:postId/like', auth, async (req, res) => {
       return res.status(404).json({ message: 'Post not found' })
     }
 
-    const likeIndex = post.likes.indexOf(req.user._id)
+    const likeIndex = post.likes.findIndex(like => 
+      like.toString() === req.user._id.toString()
+    )
+    
     if (likeIndex === -1) {
       post.likes.push(req.user._id)
     } else {
@@ -70,9 +83,25 @@ router.post('/:postId/like', auth, async (req, res) => {
     }
 
     await post.save()
-    res.json(post)
+    
+    await post.populate('author', 'username profilePicture')
+    await post.populate('comments.user', 'username profilePicture')
+    await post.populate('likes', 'username profilePicture')
+
+    const transformedPost = {
+      ...post.toObject(),
+      likes: post.likes || [],
+      comments: post.comments || [],
+      author: post.author || { username: 'Unknown User' }
+    }
+
+    res.json(transformedPost)
   } catch (error) {
-    res.status(500).json({ message: 'Error updating post likes', error: error.message })
+    console.error('Error in like endpoint:', error)
+    res.status(500).json({ 
+      message: 'Error updating post likes', 
+      error: error.message 
+    })
   }
 })
 
@@ -91,6 +120,54 @@ router.delete('/:postId', auth, async (req, res) => {
     res.json({ message: 'Post deleted successfully' })
   } catch (error) {
     res.status(500).json({ message: 'Error deleting post', error: error.message })
+  }
+})
+
+router.post('/:postId/comments', auth, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId)
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' })
+    }
+
+    const newComment = {
+      user: req.user._id,
+      content: req.body.content,
+      createdAt: new Date()
+    }
+
+    post.comments.push(newComment)
+    await post.save()
+    await post.populate('comments.user', 'username')
+
+    const addedComment = post.comments[post.comments.length - 1]
+    res.status(201).json(addedComment)
+  } catch (error) {
+    res.status(500).json({ message: 'Error adding comment', error: error.message })
+  }
+})
+
+router.delete('/:postId/comments/:commentId', auth, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId)
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' })
+    }
+
+    const comment = post.comments.id(req.params.commentId)
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' })
+    }
+
+    if (comment.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to delete this comment' })
+    }
+
+    comment.remove()
+    await post.save()
+    res.json({ message: 'Comment deleted successfully' })
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting comment', error: error.message })
   }
 })
 

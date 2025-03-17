@@ -1,0 +1,125 @@
+.navContainer {
+  @apply w-full bg-white border-b border-gray-200 fixed top-0 z-50;
+}
+
+.navbar {
+  background-color: white;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.navbarContainer {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  color: #2c3e50;
+  font-size: 1.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+  transition: color 0.2s ease-in-out;
+}
+
+.logo:hover {
+  color: #007bff;
+}
+
+.navLinks {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.navLink {
+  color: #2c3e50;
+  font-size: 1.1rem;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: all 0.2s ease-in-out;
+}
+
+.navLink:hover {
+  color: #007bff;
+  background-color: #f8f9fa;
+}
+
+.navLink.active {
+  color: #007bff;
+  background-color: #e3f2fd;
+}
+
+.logoutButton {
+  background-color: #f8f9fa;
+  color: #dc3545;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.logoutButton:hover {
+  background-color: #dc3545;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.authButton {
+  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+}
+
+.loginButton {
+  @apply text-blue-600 hover:text-blue-700;
+}
+
+.mobileMenuButton {
+  @apply md:hidden p-2 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100;
+}
+
+.mobileMenu {
+  @apply md:hidden;
+}
+
+.mobileNavLinks {
+  @apply px-2 pt-2 pb-3 space-y-1;
+}
+
+.mobileNavLink {
+  @apply block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50;
+}
+
+@media (max-width: 640px) {
+  .navbar {
+    padding: 1rem;
+  }
+
+  .navbarContainer {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .navLinks {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .navLink {
+    font-size: 1rem;
+    padding: 0.4rem 0.8rem;
+  }
+} 

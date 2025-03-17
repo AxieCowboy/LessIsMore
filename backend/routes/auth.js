@@ -7,7 +7,6 @@ router.post('/signup', async (req, res) => {
   try {
     const { username, email, password } = req.body
 
-
     const existingUser = await User.findOne({
       $or: [{ email }, { username }]
     })
@@ -29,7 +28,15 @@ router.post('/signup', async (req, res) => {
     await user.save()
 
     const token = jwt.sign(
-      { userId: user._id },
+      { 
+        userId: user._id,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          createdAt: user.createdAt
+        }
+      },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     )
@@ -39,7 +46,8 @@ router.post('/signup', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        createdAt: user.createdAt
       }
     })
   } catch (error) {
@@ -53,7 +61,6 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body
     console.log('Login attempt for email:', email);
 
-
     const user = await User.findOne({ email }).select('+password')
     if (!user) {
       console.log('User not found for email:', email);
@@ -61,7 +68,6 @@ router.post('/login', async (req, res) => {
     }
     console.log('User found:', user.email);
     console.log('Stored hashed password:', user.password);
-
 
     const isMatch = await user.comparePassword(password)
     console.log('Password match result:', isMatch);
@@ -71,9 +77,16 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
-
     const token = jwt.sign(
-      { userId: user._id },
+      { 
+        userId: user._id,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          createdAt: user.createdAt
+        }
+      },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     )
@@ -83,7 +96,8 @@ router.post('/login', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        createdAt: user.createdAt
       }
     })
   } catch (error) {

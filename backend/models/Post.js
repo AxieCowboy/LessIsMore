@@ -9,7 +9,7 @@ const postSchema = new mongoose.Schema({
   content: {
     type: String,
     required: [true, "Post content is required"],
-    maxlength: [140, "Post cannot be more than 140 characters"]
+    maxlength: [500, "Post cannot be more than 500 characters"]
   },
   image: {
     type: String
@@ -27,7 +27,7 @@ const postSchema = new mongoose.Schema({
     content: {
       type: String,
       required: true,
-      maxlength: [140, "Comment cannot be more than 140 characters"]
+      maxlength: [500, "Comment cannot be more than 500 characters"]
     },
     createdAt: {
       type: Date,

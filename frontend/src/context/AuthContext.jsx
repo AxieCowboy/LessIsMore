@@ -1,57 +1,92 @@
 import { createContext, useState, useEffect } from "react"
+import { jwtDecode } from "jwt-decode"
 
 export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
-  let storedUser = localStorage.getItem("user")
-  let storedToken = localStorage.getItem("token")
-
-  if (storedUser === "undefined" || storedUser === null) {
-    storedUser = null
-  } else {
-    try {
-      storedUser = JSON.parse(storedUser)
-    } catch (error) {
-      console.error("Invalid JSON in localStorage:", error)
-      storedUser = null
+  const [user, setUser] = useState(() => {
+    const storedToken = localStorage.getItem("token")
+    if (storedToken) {
+      try {
+        const decodedToken = jwtDecode(storedToken)
+   
+        if (decodedToken.exp * 1000 < Date.now()) {
+          localStorage.removeItem("token")
+          return null
+        }
+        return decodedToken.user
+      } catch (error) {
+        console.error("Invalid token:", error)
+        localStorage.removeItem("token")
+        return null
+      }
     }
-  }
+    return null
+  })
 
-  const [user, setUser] = useState(storedUser)
-  const [token, setToken] = useState(storedToken)
-
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user))
-    } else {
-      localStorage.removeItem("user")
+  const [token, setToken] = useState(() => {
+    const storedToken = localStorage.getItem("token")
+    if (storedToken) {
+      try {
+        const decodedToken = jwtDecode(storedToken)
+   
+        if (decodedToken.exp * 1000 < Date.now()) {
+          localStorage.removeItem("token")
+          return null
+        }
+        return storedToken
+      } catch (error) {
+        localStorage.removeItem("token")
+        return null
+      }
     }
-  }, [user])
+    return null
+  })
 
   useEffect(() => {
     if (token) {
-      localStorage.setItem("token", token)
+      try {
+        const decodedToken = jwtDecode(token)
+   
+        if (decodedToken.exp * 1000 < Date.now()) {
+          setUser(null)
+          setToken(null)
+          localStorage.removeItem("token")
+          return
+        }
+        setUser(decodedToken.user)
+        localStorage.setItem("token", token)
+      } catch (error) {
+        console.error("Token validation error:", error)
+        setUser(null)
+        setToken(null)
+        localStorage.removeItem("token")
+      }
     } else {
+      setUser(null)
       localStorage.removeItem("token")
     }
   }, [token])
 
-  const login = async (email, password) => {
+  const login = async (token) => {
+    if (!token) {
+      console.error("No token provided")
+      return false
+    }
+    
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
+      const decodedToken = jwtDecode(token)
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed")
+      if (decodedToken.exp * 1000 < Date.now()) {
+        console.error("Token is expired")
+        return false
       }
-
-      setUser(data.user)
-      setToken(data.token)
+      if (!decodedToken.user) {
+        console.error("Token does not contain user data")
+        return false
+      }
+      setToken(token)
+      setUser(decodedToken.user)
       return true
     } catch (error) {
       console.error("Login Error:", error)
@@ -62,12 +97,21 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null)
     setToken(null)
-    localStorage.removeItem("user")
     localStorage.removeItem("token")
   }
 
+  const isAuthenticated = () => {
+    if (!token || !user) return false
+    try {
+      const decodedToken = jwtDecode(token)
+      return decodedToken.exp * 1000 > Date.now()
+    } catch {
+      return false
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   )
