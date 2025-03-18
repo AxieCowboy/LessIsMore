@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext'
 import styles from './Navbar.module.css'
 
 const Navbar = () => {
+  console.log('hello')
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useContext(AuthContext)
