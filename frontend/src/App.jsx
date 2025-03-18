@@ -43,7 +43,7 @@ function App() {
             path="/leaderboard"
             element={user ? <Leaderboard /> : <Navigate to="/login" replace />}
           />
-          
+
           <Route
             path="*"
             element={
