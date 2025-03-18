@@ -42,8 +42,8 @@ const Navbar = () => {
         
         <div className={`${styles.navLinks} ${isMenuOpen ? styles.navLinksOpen : ''}`}>
           <Link 
-            to="/" 
-            className={`${styles.navLink} ${location.pathname === '/' ? styles.active : ''}`}
+            to="/profile" 
+            className={`${styles.navLink} ${location.pathname === '/profile' ? styles.active : ''}`}
             onClick={() => setIsMenuOpen(false)}
           >
             Profile
