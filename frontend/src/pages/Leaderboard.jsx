@@ -24,7 +24,7 @@ const Leaderboard = () => {
         throw new Error('Authentication token is missing. Please log in again.')
       }
 
-      const response = await fetch('http://localhost:5000/api/users/leaderboard', {
+      const response = await fetch(import.meta.env.VITE_Api_URL+'/api/users/leaderboard', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

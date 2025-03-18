@@ -27,7 +27,7 @@ const Profile = () => {
   const fetchUserDetails = async () => {
     try {
       const targetUserId = userId || user.id
-      const response = await fetch(`http://localhost:5000/api/users/${targetUserId}`, {
+      const response = await fetch(import.meta.env.VITE_Api_URL+`/api/users/${targetUserId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -46,7 +46,7 @@ const Profile = () => {
   const fetchUserPosts = async () => {
     try {
       const targetUserId = userId || user.id
-      const response = await fetch(`http://localhost:5000/api/posts/user/${targetUserId}`, {
+      const response = await fetch(import.meta.env.VITE_Api_URL+`/api/posts/user/${targetUserId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -64,7 +64,7 @@ const Profile = () => {
 
   const handleLike = async (postId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
+      const response = await fetch(import.meta.env.VITE_Api_URL+`/api/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -98,7 +98,7 @@ const Profile = () => {
     if (!commentContent[postId]?.trim()) return
 
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments`, {
+      const response = await fetch(import.meta.env.VITE_Api_URL+`/api/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
