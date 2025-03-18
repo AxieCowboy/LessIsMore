@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
 import styles from './Home.module.css'
 
 const MAX_CONTENT_LENGTH = 500
-const API_URL = "http://localhost:5000"
+const API_URL = import.meta.env.VITE_Api_URL
 
 const Home = () => {
   const { token, user, isAuthenticated, logout } = useContext(AuthContext)
