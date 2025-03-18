@@ -1,14 +1,14 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useContext } from 'react'
 import { AuthContext } from '../context/AuthContext'
 import styles from './Navbar.module.css'
 
 const Navbar = () => {
-  console.log('hello')
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useContext(AuthContext)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const handleLogout = async () => {
     try {
@@ -19,6 +19,10 @@ const Navbar = () => {
     }
   }
 
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen)
+  }
+
   return (
     <nav className={styles.navbar}>
       <div className={styles.navbarContainer}>
@@ -26,21 +30,36 @@ const Navbar = () => {
           LessIsMore
         </Link>
         
-        <div className={styles.navLinks}>
+        <button 
+          className={styles.menuButton}
+          onClick={toggleMenu}
+          aria-label="Toggle menu"
+        >
+          <span className={styles.menuIcon}></span>
+          <span className={styles.menuIcon}></span>
+          <span className={styles.menuIcon}></span>
+        </button>
+        
+        <div className={`${styles.navLinks} ${isMenuOpen ? styles.navLinksOpen : ''}`}>
           <Link 
             to="/" 
             className={`${styles.navLink} ${location.pathname === '/' ? styles.active : ''}`}
+            onClick={() => setIsMenuOpen(false)}
           >
             Profile
           </Link>
           <Link 
             to="/leaderboard" 
             className={`${styles.navLink} ${location.pathname === '/leaderboard' ? styles.active : ''}`}
+            onClick={() => setIsMenuOpen(false)}
           >
             Leaderboard
           </Link>
           <button 
-            onClick={handleLogout}
+            onClick={() => {
+              handleLogout()
+              setIsMenuOpen(false)
+            }}
             className={styles.logoutButton}
           >
             Logout

@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
           if (decodedToken.exp * 1000 > Date.now()) {
             setToken(storedToken)
             setUser(JSON.parse(storedUser))
-          } else {
+    } else {
             // Token expired, clear storage
             localStorage.removeItem("token")
             localStorage.removeItem("user")
@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
           console.error("Auth initialization error:", error)
           localStorage.removeItem("token")
-          localStorage.removeItem("user")
+      localStorage.removeItem("user")
         }
       }
       setLoading(false)
