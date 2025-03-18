@@ -4,93 +4,107 @@ import { jwtDecode } from "jwt-decode"
 export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const storedToken = localStorage.getItem("token")
-    if (storedToken) {
-      try {
-        const decodedToken = jwtDecode(storedToken)
-   
-        if (decodedToken.exp * 1000 < Date.now()) {
-          localStorage.removeItem("token")
-          return null
-        }
-        return decodedToken.user
-      } catch (error) {
-        console.error("Invalid token:", error)
-        localStorage.removeItem("token")
-        return null
-      }
-    }
-    return null
-  })
-
-  const [token, setToken] = useState(() => {
-    const storedToken = localStorage.getItem("token")
-    if (storedToken) {
-      try {
-        const decodedToken = jwtDecode(storedToken)
-   
-        if (decodedToken.exp * 1000 < Date.now()) {
-          localStorage.removeItem("token")
-          return null
-        }
-        return storedToken
-      } catch (error) {
-        localStorage.removeItem("token")
-        return null
-      }
-    }
-    return null
-  })
+  const [user, setUser] = useState(null)
+  const [token, setToken] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (token) {
-      try {
-        const decodedToken = jwtDecode(token)
-   
-        if (decodedToken.exp * 1000 < Date.now()) {
-          setUser(null)
-          setToken(null)
+    const initAuth = () => {
+      const storedToken = localStorage.getItem("token")
+      const storedUser = localStorage.getItem("user")
+
+      if (storedToken && storedUser) {
+        try {
+          const decodedToken = jwtDecode(storedToken)
+          if (decodedToken.exp * 1000 > Date.now()) {
+            setToken(storedToken)
+            setUser(JSON.parse(storedUser))
+          } else {
+            // Token expired, clear storage
+            localStorage.removeItem("token")
+            localStorage.removeItem("user")
+          }
+        } catch (error) {
+          console.error("Auth initialization error:", error)
           localStorage.removeItem("token")
-          return
+          localStorage.removeItem("user")
         }
-        setUser(decodedToken.user)
-        localStorage.setItem("token", token)
-      } catch (error) {
-        console.error("Token validation error:", error)
-        setUser(null)
-        setToken(null)
-        localStorage.removeItem("token")
       }
-    } else {
-      setUser(null)
-      localStorage.removeItem("token")
+      setLoading(false)
     }
-  }, [token])
 
-  const login = async (token) => {
-    if (!token) {
-      console.error("No token provided")
-      return false
-    }
-    
+    initAuth()
+  }, [])
+
+  const login = async (email, password) => {
     try {
-      const decodedToken = jwtDecode(token)
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
 
-      if (decodedToken.exp * 1000 < Date.now()) {
-        console.error("Token is expired")
-        return false
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Login failed")
       }
-      if (!decodedToken.user) {
-        console.error("Token does not contain user data")
-        return false
+
+      const data = await response.json()
+      
+      if (!data.token || !data.user) {
+        throw new Error("Invalid response from server")
       }
-      setToken(token)
-      setUser(decodedToken.user)
-      return true
+
+      // Store token and user data
+      localStorage.setItem("token", data.token)
+      localStorage.setItem("user", JSON.stringify(data.user))
+      
+      // Update state
+      setToken(data.token)
+      setUser(data.user)
+      
+      return data
     } catch (error) {
-      console.error("Login Error:", error)
-      return false
+      console.error("Login error:", error)
+      throw error
+    }
+  }
+
+  const signup = async (username, email, password) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, email, password }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Signup failed")
+      }
+
+      const data = await response.json()
+      
+      if (!data.token || !data.user) {
+        throw new Error("Invalid response from server")
+      }
+
+      // Store token and user data
+      localStorage.setItem("token", data.token)
+      localStorage.setItem("user", JSON.stringify(data.user))
+      
+      // Update state
+      setToken(data.token)
+      setUser(data.user)
+      
+      return data
+    } catch (error) {
+      console.error("Signup error:", error)
+      throw error
     }
   }
 
@@ -98,10 +112,11 @@ export const AuthProvider = ({ children }) => {
     setUser(null)
     setToken(null)
     localStorage.removeItem("token")
+    localStorage.removeItem("user")
   }
 
   const isAuthenticated = () => {
-    if (!token || !user) return false
+    if (!token) return false
     try {
       const decodedToken = jwtDecode(token)
       return decodedToken.exp * 1000 > Date.now()
@@ -110,8 +125,20 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  if (loading) {
+    return <div>Loading...</div>
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      login, 
+      logout, 
+      signup, 
+      isAuthenticated,
+      isLoading: loading 
+    }}>
       {children}
     </AuthContext.Provider>
   )

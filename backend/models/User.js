@@ -22,39 +22,55 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters long'],
-    select: false
+    select: true
+  },
+  profilePicture: {
+    type: String,
+    default: null
+  },
+  score: {
+    type: Number,
+    default: 0
+  },
+  lastActivity: {
+    type: Date,
+    default: Date.now
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true 
 })
 
+// Hash password before saving
 userSchema.pre('save', async function(next) {
-  if (this.isModified('password')) {
-    console.log('Hashing password for user:', this.email)
-    try {
-      const salt = await bcrypt.genSalt(10)
-      this.password = await bcrypt.hash(this.password, salt)
-      console.log('Password hashed successfully')
-    } catch (error) {
-      console.error('Error hashing password:', error)
-      throw error
-    }
+  // Only hash the password if it has been modified (or is new)
+  if (!this.isModified('password')) return next()
+  
+  try {
+    const salt = await bcrypt.genSalt(10)
+    this.password = await bcrypt.hash(this.password, salt)
+    next()
+  } catch (error) {
+    next(error)
   }
-  next()
 })
 
+// Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
-  console.log('Comparing passwords')
-  console.log('Candidate password:', candidatePassword)
-  console.log('Stored hashed password:', this.password)
   try {
-    const isMatch = await bcrypt.compare(candidatePassword, this.password)
-    console.log('Password match result:', isMatch)
-    return isMatch
+    return await bcrypt.compare(candidatePassword, this.password)
   } catch (error) {
-    console.error('Error comparing passwords:', error)
     throw error
   }
+}
+
+// Update last activity
+userSchema.methods.updateActivity = async function() {
+  this.lastActivity = new Date()
+  await this.save()
 }
 
 module.exports = mongoose.model('User', userSchema)

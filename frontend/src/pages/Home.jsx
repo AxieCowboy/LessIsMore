@@ -4,50 +4,87 @@ import { Link } from "react-router-dom"
 import styles from './Home.module.css'
 
 const MAX_CONTENT_LENGTH = 500
+const API_URL = "http://localhost:5000"
 
 const Home = () => {
-  const { user, token } = useContext(AuthContext)
-  const [content, setContent] = useState("")
+  const { token, user, isAuthenticated, logout } = useContext(AuthContext)
   const [posts, setPosts] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [content, setContent] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [commentContent, setCommentContent] = useState({})
   const [showComments, setShowComments] = useState({})
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
   useEffect(() => {
-    fetchPosts()
-  }, [])
+    const checkAuthAndFetchPosts = async () => {
+      if (!token) {
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        // Check if token is valid
+        const isValid = isAuthenticated()
+        console.log('Token validation:', { isValid, token: token?.slice(0, 20) + '...' })
+        
+        if (!isValid) {
+          console.log('Token is invalid, logging out')
+          logout()
+          setIsLoading(false)
+          return
+        }
+
+        await fetchPosts()
+      } catch (error) {
+        console.error('Auth check error:', error)
+        setIsLoading(false)
+      }
+    }
+
+    checkAuthAndFetchPosts()
+  }, [token, currentPage, isAuthenticated, logout])
 
   const fetchPosts = async () => {
+    if (!token) {
+      setIsLoading(false)
+      return
+    }
+
     try {
       setIsLoading(true)
       setError(null)
-      const response = await fetch("http://localhost:5000/api/posts", {
+      
+      console.log('Fetching posts with token:', token?.slice(0, 20) + '...')
+      
+      const response = await fetch(`${API_URL}/api/posts?page=${currentPage}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       })
 
+      console.log('Posts response status:', response.status)
+      
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to fetch posts')
+        if (response.status === 401) {
+          console.log('Unauthorized response, logging out')
+          logout()
+          throw new Error('Authentication failed. Please log in again.')
+        }
+        throw new Error('Failed to fetch posts')
       }
 
       const data = await response.json()
-      console.log('Posts response:', data)
+      console.log('Posts data received:', { count: data.posts?.length, totalPages: data.totalPages })
       
-      if (data && Array.isArray(data)) {
-        setPosts(data)
-      } else if (data && Array.isArray(data.posts)) {
-        setPosts(data.posts)
-      } else {
-        console.error('Unexpected posts data structure:', data)
-        setPosts([])
-      }
+      setPosts(data.posts || [])
+      setTotalPages(data.totalPages || 1)
     } catch (error) {
       console.error("Error fetching posts:", error)
-      setError("Failed to load posts. Please try again later.")
+      setError(error.message || "Failed to load posts. Please try again.")
+      setPosts([])
     } finally {
       setIsLoading(false)
     }
@@ -60,9 +97,9 @@ const Home = () => {
     try {
       setIsLoading(true)
       setError(null)
-      const response = await fetch("http://localhost:5000/api/posts", {
+      const response = await fetch(`${API_URL}/api/posts`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           'Authorization': `Bearer ${token}`
         },
@@ -85,21 +122,29 @@ const Home = () => {
 
   const handleLike = async (postId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
+      const response = await fetch(`${API_URL}/api/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-
       if (!response.ok) {
         throw new Error('Failed to like post')
       }
 
-      const updatedPost = await response.json()
-      setPosts(posts.map(post => 
-        post._id === postId ? updatedPost : post
-      ))
+      // Update the posts state immediately
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === postId 
+            ? {
+                ...post,
+                likes: post.likes.includes(user._id)
+                  ? post.likes.filter(id => id !== user._id)
+                  : [...post.likes, user._id]
+              }
+            : post
+        )
+      )
     } catch (error) {
       console.error('Error liking post:', error)
       setError('Failed to like post. Please try again.')
@@ -110,7 +155,7 @@ const Home = () => {
     if (!commentContent[postId]?.trim()) return
 
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments`, {
+      const response = await fetch(`${API_URL}/api/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,33 +168,10 @@ const Home = () => {
         throw new Error('Failed to add comment')
       }
 
-      const newComment = await response.json()
-      setPosts(posts.map(post => {
-        if (post._id === postId) {
-          const updatedComments = post.comments || []
-          return {
-            ...post,
-            comments: [...updatedComments, {
-              _id: newComment._id,
-              content: newComment.content,
-              user: {
-                _id: user.id,
-                username: user.username
-              },
-              createdAt: new Date().toISOString()
-            }]
-          }
-        }
-        return post
-      }))
-      
-      setCommentContent(prev => ({
-        ...prev,
-        [postId]: ''
-      }))
+      setCommentContent(prev => ({ ...prev, [postId]: '' }))
+      fetchPosts()
     } catch (error) {
       console.error('Error adding comment:', error)
-      setError('Failed to add comment. Please try again.')
     }
   }
 
@@ -160,11 +182,14 @@ const Home = () => {
     }))
   }
 
-  const isLiked = (post) => {
-    if (!post.likes || !Array.isArray(post.likes)) return false
-    return post.likes.some(like => 
-      (typeof like === 'string' && like === user?.id) || 
-      (like._id === user?.id)
+  if (!token) {
+    return (
+      <div className={styles.pageContainer}>
+        <div className={styles.welcomeMessage}>
+          <h1>Welcome to LessIsMore</h1>
+          <p>Please log in to view and create posts.</p>
+        </div>
+      </div>
     )
   }
 
@@ -173,19 +198,17 @@ const Home = () => {
       <div className={styles.createPostCard}>
         <h2 className={styles.createPostTitle}>Create a Post</h2>
         <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.textareaWrapper}>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="What's on your mind?"
-              className={styles.textarea}
-              disabled={isLoading}
-              maxLength={MAX_CONTENT_LENGTH}
-            />
-            <span className={styles.characterCount}>
-              {content.length}/{MAX_CONTENT_LENGTH}
-            </span>
-          </div>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="What's on your mind?"
+            className={styles.textarea}
+            disabled={isLoading}
+            maxLength={MAX_CONTENT_LENGTH}
+          />
+          <span className={styles.characterCount}>
+            {content.length}/{MAX_CONTENT_LENGTH}
+          </span>
           <button
             type="submit"
             disabled={isLoading || !content.trim() || content.length > MAX_CONTENT_LENGTH}
@@ -200,101 +223,106 @@ const Home = () => {
         </form>
       </div>
 
+      {error && <div className={styles.error}>{error}</div>}
+
       <div className={styles.postsSection}>
-        <h3 className={styles.sectionTitle}>Recent Posts</h3>
-        {error && (
-          <div className={styles.errorAlert}>
-            <p className={styles.errorText}>{error}</p>
-          </div>
-        )}
-        {isLoading && <p className={styles.loadingText}>Loading posts...</p>}
-        {posts.length === 0 && !isLoading && !error && (
-          <p className={styles.emptyText}>No posts yet. Be the first to post!</p>
-        )}
-        {posts.map((post) => (
-          <div key={post._id} className={styles.postCard}>
-            <div className={styles.postHeader}>
-              <div className={styles.authorInfo}>
-                <div className="ml-3">
-                  <Link 
-                    to={`/profile/${post.author?._id}`}
-                    className={styles.authorName}
-                  >
-                    {post.author?.username || 'Unknown User'}
-                  </Link>
-                  <p className={styles.postDate}>
-                    {new Date(post.createdAt).toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <p className={styles.postContent}>{post.content}</p>
-            <div className={styles.postFooter}>
-              <div className={styles.postStats}>
-                <span>{post.likes?.length || 0} likes</span>
-                <span>{post.comments?.length || 0} comments</span>
-              </div>
-              <div className={styles.actionButtons}>
-                <button 
-                  onClick={() => handleLike(post._id)}
-                  className={`${styles.actionButton} ${isLiked(post) ? styles.actionButtonActive : ''}`}
-                >
-                  {isLiked(post) ? '❤️' : '🤍'}
-                </button>
-                <button 
-                  onClick={() => toggleComments(post._id)}
-                  className={`${styles.actionButton} ${showComments[post._id] ? styles.actionButtonActive : ''}`}
-                >
-                  💬 Comment
-                </button>
-              </div>
-            </div>
-            
-            {showComments[post._id] && (
-              <div className={styles.commentsSection}>
-                <div className={styles.commentsList}>
-                  {post.comments?.map((comment) => (
-                    <div key={comment._id} className={styles.commentItem}>
-                      <div className={styles.commentContent}>
-                        <Link 
-                          to={`/profile/${comment.user?._id}`}
-                          className={styles.commentAuthor}
+        <h2 className={styles.sectionTitle}>Recent Posts</h2>
+        {isLoading ? (
+          <div className={styles.loading}>Loading posts...</div>
+        ) : posts.length === 0 ? (
+          <div className={styles.noPosts}>No posts yet. Be the first to post!</div>
+        ) : (
+          <>
+            <div className={styles.postsList}>
+              {posts.map((post) => (
+                <div key={post._id} className={styles.postCard}>
+                  <div className={styles.postHeader}>
+                    <div className={styles.authorInfo}>
+                      <Link to={`/profile/${post.author._id}`} className={styles.authorLink}>
+                        <span className={styles.authorName}>{post.author.username}</span>
+                      </Link>
+                      <span className={styles.postDate}>
+                        {new Date(post.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  <p className={styles.postContent}>{post.content}</p>
+                  <div className={styles.postActions}>
+                    <button
+                      onClick={() => handleLike(post._id)}
+                      className={`${styles.actionButton} ${post.likes.includes(user._id) ? styles.actionButtonActive : ''}`}
+                    >
+                      {post.likes.includes(user._id) ? '❤️' : '🤍'} {post.likes.length}
+                    </button>
+                    <button
+                      onClick={() => toggleComments(post._id)}
+                      className={styles.actionButton}
+                    >
+                      💬 {post.comments.length}
+                    </button>
+                  </div>
+
+                  {showComments[post._id] && (
+                    <div className={styles.commentsSection}>
+                      <div className={styles.commentsList}>
+                        {post.comments.map((comment) => (
+                          <div key={comment._id} className={styles.comment}>
+                            <div className={styles.commentHeader}>
+                              <Link to={`/profile/${comment.user._id}`} className={styles.commentAuthor}>
+                                <span>{comment.user.username}</span>
+                              </Link>
+                              <span className={styles.commentDate}>
+                                {new Date(comment.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className={styles.commentContent}>{comment.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className={styles.commentForm}>
+                        <textarea
+                          value={commentContent[post._id] || ''}
+                          onChange={(e) => setCommentContent(prev => ({ ...prev, [post._id]: e.target.value }))}
+                          placeholder="Write a comment..."
+                          className={styles.commentTextarea}
+                          maxLength={MAX_CONTENT_LENGTH}
+                        />
+                        <button
+                          onClick={() => handleComment(post._id)}
+                          disabled={!commentContent[post._id]?.trim()}
+                          className={`${styles.commentButton} ${!commentContent[post._id]?.trim() ? styles.disabled : ''}`}
                         >
-                          {comment.user?.username || 'Unknown User'}
-                        </Link>
-                        <p className={styles.commentText}>{comment.content}</p>
+                          Comment
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-                <div className={styles.addComment}>
-                  <textarea
-                    value={commentContent[post._id] || ''}
-                    onChange={(e) => setCommentContent(prev => ({
-                      ...prev,
-                      [post._id]: e.target.value
-                    }))}
-                    placeholder="Write a comment..."
-                    className={styles.commentInput}
-                  />
-                  <button
-                    onClick={() => handleComment(post._id)}
-                    disabled={!commentContent[post._id]?.trim()}
-                    className={styles.commentButton}
-                  >
-                    Post
-                  </button>
-                </div>
+                  )}
+        </div>
+      ))}
+            </div>
+            {totalPages > 1 && (
+              <div className={styles.pagination}>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className={styles.paginationButton}
+                >
+                  Previous
+                </button>
+                <span className={styles.pageInfo}>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className={styles.paginationButton}
+                >
+                  Next
+                </button>
               </div>
             )}
-          </div>
-        ))}
+          </>
+        )}
       </div>
     </div>
   )

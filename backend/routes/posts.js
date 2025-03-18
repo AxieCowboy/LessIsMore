@@ -1,19 +1,21 @@
 const express = require('express')
 const router = express.Router()
 const Post = require('../models/Post')
+const User = require('../models/User')
 const auth = require('../middleware/auth')
 
 router.post('/', auth, async (req, res) => {
   try {
+    const { content } = req.body;
     const post = new Post({
-      ...req.body,
+      content,
       author: req.user._id
-    })
-    await post.save()
+    });
+    await post.save();
     await post.populate('author', 'username profilePicture')
     res.status(201).json(post)
-  } catch (error) {
-    res.status(500).json({ message: 'Error creating post', error: error.message })
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 })
 
@@ -64,7 +66,6 @@ router.get('/user/:userId', auth, async (req, res) => {
   }
 })
 
-
 router.post('/:postId/like', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId)
@@ -78,8 +79,16 @@ router.post('/:postId/like', auth, async (req, res) => {
     
     if (likeIndex === -1) {
       post.likes.push(req.user._id)
+      await User.findByIdAndUpdate(post.author, {
+        $inc: { score: 5 },
+        lastActivity: new Date()
+      })
     } else {
       post.likes.splice(likeIndex, 1)
+      await User.findByIdAndUpdate(post.author, {
+        $inc: { score: -5 },
+        lastActivity: new Date()
+      })
     }
 
     await post.save()
@@ -138,8 +147,18 @@ router.post('/:postId/comments', auth, async (req, res) => {
 
     post.comments.push(newComment)
     await post.save()
-    await post.populate('comments.user', 'username')
+    
+    await User.findByIdAndUpdate(post.author, {
+      $inc: { score: 3 },
+      lastActivity: new Date()
+    })
 
+    await User.findByIdAndUpdate(req.user._id, {
+      $inc: { score: 2 },
+      lastActivity: new Date()
+    })
+    
+    await post.populate('comments.user', 'username profilePicture')
     const addedComment = post.comments[post.comments.length - 1]
     res.status(201).json(addedComment)
   } catch (error) {
@@ -162,6 +181,16 @@ router.delete('/:postId/comments/:commentId', auth, async (req, res) => {
     if (comment.user.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to delete this comment' })
     }
+
+    await User.findByIdAndUpdate(post.author, {
+      $inc: { score: -3 },
+      lastActivity: new Date()
+    })
+
+    await User.findByIdAndUpdate(req.user._id, {
+      $inc: { score: -2 },
+      lastActivity: new Date()
+    })
 
     comment.remove()
     await post.save()

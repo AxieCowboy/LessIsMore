@@ -1,88 +1,113 @@
 import React, { useState } from "react"
-import axios from "axios"
 import { useNavigate } from "react-router-dom"
+import styles from "./Signup.module.css"
 
 const Signup = () => {
   const [formData, setFormData] = useState({ username: "", email: "", password: "" })
   const [message, setMessage] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
+    setMessage("") // Clear any error messages when user types
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setIsLoading(true)
+    setMessage("")
+
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/signup", formData)
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Signup failed")
+      }
+
       setMessage("Registration successful! Redirecting to login...")
       setTimeout(() => {
         navigate("/login")
-      }, 1000)
+      }, 1500)
     } catch (error) {
-      setMessage(error.response?.data?.message || "Signup failed")
+      setMessage(error.message || "An error occurred during signup")
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
-    <div>
-      <div>
-        <div>
-          <h2>
-            Create your account
-          </h2>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div>
-            <div>
-              <input
-                type="text"
-                name="username"
-                required
-                placeholder="Username"
-                onChange={handleChange}
-              />
-            </div>
-            <div>
-              <input
-                type="email"
-                name="email"
-                required
-                placeholder="Email address"
-                onChange={handleChange}
-              />
-            </div>
-            <div>
-              <input
-                type="password"
-                name="password"
-                required
-                placeholder="Password"
-                onChange={handleChange}
-              />
-            </div>
+    <div className={styles.container}>
+      <div className={styles.formWrapper}>
+        <h2 className={styles.title}>Create your account</h2>
+        
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.inputGroup}>
+            <input
+              type="text"
+              name="username"
+              required
+              placeholder="Username"
+              onChange={handleChange}
+              className={styles.input}
+              minLength={3}
+            />
+          </div>
+          
+          <div className={styles.inputGroup}>
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder="Email address"
+              onChange={handleChange}
+              className={styles.input}
+            />
+          </div>
+          
+          <div className={styles.inputGroup}>
+            <input
+              type="password"
+              name="password"
+              required
+              placeholder="Password"
+              onChange={handleChange}
+              className={styles.input}
+              minLength={6}
+            />
           </div>
 
-          <div>
-            <button
-              type="submit"
-            >
-              Sign up
-            </button>
-          </div>
+          <button
+            type="submit"
+            className={styles.button}
+            disabled={isLoading}
+          >
+            {isLoading ? "Creating account..." : "Sign up"}
+          </button>
         </form>
+
         {message && (
-          <p className={`mt-2 text-center text-sm ${message.includes("successful") ? "text-green-600" : "text-red-600"
-            }`}>
+          <p className={`${styles.message} ${
+            message.includes("successful") ? styles.success : styles.error
+          }`}>
             {message}
           </p>
         )}
-        <div >
-          <p >
+
+        <div className={styles.footer}>
+          <p>
             Already have an account?{" "}
             <button
               onClick={() => navigate("/login")}
-
+              className={styles.link}
             >
               Log in
             </button>

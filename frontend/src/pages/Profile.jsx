@@ -81,9 +81,9 @@ const Profile = () => {
           post._id === postId 
             ? {
                 ...post,
-                likes: post.likes?.includes(user.id)
-                  ? post.likes.filter(id => id !== user.id)
-                  : [...(post.likes || []), user.id]
+                likes: post.likes?.includes(user._id)
+                  ? post.likes.filter(id => id !== user._id)
+                  : [...(post.likes || []), user._id]
               }
             : post
         )
@@ -195,9 +195,9 @@ const Profile = () => {
                 <div className={styles.postActions}>
                   <button
                     onClick={() => handleLike(post._id)}
-                    className={`${styles.actionButton} ${post.likes?.includes(user.id) ? styles.actionButtonActive : ''}`}
+                    className={`${styles.actionButton} ${post.likes?.includes(user._id) ? styles.actionButtonActive : ''}`}
                   >
-                    {post.likes?.includes(user.id) ? '❤️' : '🤍'} {post.likes?.length || 0}
+                    {post.likes?.includes(user._id) ? '❤️' : '🤍'} {post.likes?.length || 0}
                   </button>
                   <button
                     onClick={() => toggleComments(post._id)}

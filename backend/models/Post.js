@@ -40,6 +40,21 @@ const postSchema = new mongoose.Schema({
   }
 })
 
+// Index for efficient queries
 postSchema.index({ author: 1, createdAt: -1 })
+postSchema.index({ createdAt: -1 })
+
+// Update user's activity when a post is created
+postSchema.post('save', async function(doc) {
+  try {
+    const User = mongoose.model('User')
+    await User.findByIdAndUpdate(doc.author, {
+      $inc: { score: 10 }, // Add 10 points for creating a post
+      lastActivity: new Date()
+    })
+  } catch (error) {
+    console.error('Error updating user activity:', error)
+  }
+})
 
 module.exports = mongoose.model("Post", postSchema)

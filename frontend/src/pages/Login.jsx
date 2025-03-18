@@ -5,7 +5,7 @@ import styles from './Login.module.css'
 
 const Login = () => {
   const navigate = useNavigate()
-  const { login } = useContext(AuthContext)
+  const { login, signup } = useContext(AuthContext)
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
     username: '',
@@ -51,42 +51,20 @@ const Login = () => {
 
     try {
       setIsLoading(true)
-      const endpoint = isLogin ? 'login' : 'signup'
-      console.log('Attempting to', endpoint, 'with email:', formData.email)
+      let result
       
-      const response = await fetch(`http://localhost:5000/api/auth/${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-        }),
-      })
-
-      const data = await response.json()
-      console.log('Server response:', data)
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Authentication failed')
+      if (isLogin) {
+        result = await login(formData.email, formData.password)
+      } else {
+        result = await signup(formData.username, formData.email, formData.password)
       }
 
-      if (!data.token) {
-        throw new Error('No token received from server')
+      if (result) {
+        navigate('/')
       }
-
-      console.log('Login successful, setting token...')
-      const loginSuccess = await login(data.token)
-      if (!loginSuccess) {
-        throw new Error('Failed to set authentication token')
-      }
-      console.log('Token set, navigating to home...')
-      navigate('/')
     } catch (err) {
-      console.error('Login error:', err)
-      setError(err.message || 'An error occurred during authentication')
+      console.error(isLogin ? 'Login error:' : 'Signup error:', err)
+      setError(err.message || (isLogin ? 'Login failed' : 'Signup failed'))
     } finally {
       setIsLoading(false)
     }
