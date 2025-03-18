@@ -31,12 +31,6 @@ const Navbar = () => {
             to="/" 
             className={`${styles.navLink} ${location.pathname === '/' ? styles.active : ''}`}
           >
-            Home
-          </Link>
-          <Link 
-            to="/profile" 
-            className={`${styles.navLink} ${location.pathname === '/profile' ? styles.active : ''}`}
-          >
             Profile
           </Link>
           <Link 
