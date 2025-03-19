@@ -1,4 +1,4 @@
-Welcome to LessIsMore, your new favorite place to share, engage, and connect with others. Whether you're posting thoughts, images, or updates, this app makes it easy to interact with people worldwide.
+LessIsMore README:
 
 Link to site:
 https://lessismorefrens.netlify.app
